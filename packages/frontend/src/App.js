@@ -79,9 +79,7 @@ function App() {
   // INTENTIONAL ISSUE: Delete mutation not implemented
   const deleteTodoMutation = useMutation({
     mutationFn: async (id) => {
-      // TODO: Implement delete functionality
-      console.log('Delete todo:', id);
-      // Missing: await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todos'] });
