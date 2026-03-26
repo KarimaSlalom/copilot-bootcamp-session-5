@@ -11,13 +11,15 @@ test.describe('TODO Application - Critical User Journeys', () => {
   let todoPage;
 
   test.beforeEach(async ({ page }) => {
+    await page.request.delete('http://localhost:3001/api/todos');
     todoPage = new TodoPage(page);
     await todoPage.goto();
-  });
+});
 
   /**
    * Test 1: Create Todo (Happy Path)
    * Verifies core functionality of adding a new todo item
+   * Also verifies stats calculation
    */
   test('should create a new todo successfully', async ({ page }) => {
     const todoTitle = 'Buy groceries';
@@ -31,11 +33,17 @@ test.describe('TODO Application - Critical User Journeys', () => {
     // Verify input is cleared after creation
     const inputValue = await todoPage.getInputValue();
     expect(inputValue).toBe('');
+    
+    // Verify stats show 1 incomplete item
+    const stats = await todoPage.getStats();
+    expect(stats.incomplete).toBe(1);
+    expect(stats.completed).toBe(0);
   });
 
   /**
    * Test 2: Toggle Todo Completion
    * Verifies user can mark todos as complete/incomplete
+   * Also verifies stats update correctly
    */
   test('should toggle todo completion status', async ({ page }) => {
     const todoTitle = 'Write unit tests';
@@ -47,6 +55,11 @@ test.describe('TODO Application - Critical User Journeys', () => {
     let isCompleted = await todoPage.isTodoCompleted(todoTitle);
     expect(isCompleted).toBe(false);
     
+    // Verify stats: 1 incomplete, 0 completed
+    let stats = await todoPage.getStats();
+    expect(stats.incomplete).toBe(1);
+    expect(stats.completed).toBe(0);
+    
     // Toggle to completed
     await todoPage.toggleTodo(todoTitle);
     
@@ -54,12 +67,22 @@ test.describe('TODO Application - Critical User Journeys', () => {
     isCompleted = await todoPage.isTodoCompleted(todoTitle);
     expect(isCompleted).toBe(true);
     
+    // Verify stats: 0 incomplete, 1 completed
+    stats = await todoPage.getStats();
+    expect(stats.incomplete).toBe(0);
+    expect(stats.completed).toBe(1);
+    
     // Toggle back to incomplete
     await todoPage.toggleTodo(todoTitle);
     
     // Verify not completed
     isCompleted = await todoPage.isTodoCompleted(todoTitle);
     expect(isCompleted).toBe(false);
+    
+    // Verify stats back to: 1 incomplete, 0 completed
+    stats = await todoPage.getStats();
+    expect(stats.incomplete).toBe(1);
+    expect(stats.completed).toBe(0);
   });
 
   /**
@@ -83,8 +106,13 @@ test.describe('TODO Application - Critical User Journeys', () => {
   /**
    * Test 4: Empty Todo Validation (Error Path)
    * Verifies system prevents creation of empty todos
+   * Also verifies empty state message displays when no todos exist
    */
   test('should not create todo with empty title', async ({ page }) => {
+    // Verify empty state message is visible initially
+    const hasEmptyState = await todoPage.hasEmptyStateMessage();
+    expect(hasEmptyState).toBe(true);
+    
     // Try to submit empty todo
     await todoPage.todoInput.click();
     await todoPage.addButton.click();
@@ -93,6 +121,9 @@ test.describe('TODO Application - Critical User Journeys', () => {
     const todos = await todoPage.getAllTodos();
     expect(todos.length).toBe(0);
     
+    // Empty state should still be visible
+    expect(await todoPage.hasEmptyStateMessage()).toBe(true);
+    
     // Try with whitespace only
     await todoPage.todoInput.fill('   ');
     await todoPage.addButton.click();
@@ -100,6 +131,9 @@ test.describe('TODO Application - Critical User Journeys', () => {
     // Still should be 0
     const todosAfter = await todoPage.getAllTodos();
     expect(todosAfter.length).toBe(0);
+    
+    // Empty state should still be visible
+    expect(await todoPage.hasEmptyStateMessage()).toBe(true);
   });
 
   /**
@@ -131,11 +165,12 @@ test.describe('TODO Application - Critical User Journeys', () => {
 
   /**
    * DEFERRED SCENARIOS (Not Implemented - Would Exceed 5 Test Limit):
+   * - Error handling when backend API is unavailable
    * - Bulk delete all todos
    * - Filter todos by completion status
-   * - Edit todo title (feature not implemented in app)
+   * - Edit todo title (feature not yet implemented in app)
    * - Keyboard navigation
    * - Concurrent edits to same todo
-   * - Offline/network error handling
+   * - Multiple todos with complex state transitions
    */
 });

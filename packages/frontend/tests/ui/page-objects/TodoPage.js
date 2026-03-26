@@ -62,13 +62,9 @@ Navigate to the TODO application and wait for initial data load
    */
   async deleteTodo(title) {
     const todoItem = this.page.getByText(title).locator('..');
-    const deleteButton = todoItem.locator('button[aria-label="Delete"], button').filter({ has: this.page.locator('[data-testid="DeleteIcon"]') });
-    
-    // Click the delete button (last button in the item)
-    const buttons = await todoItem.locator('button').all();
-    if (buttons.length > 0) {
-      await buttons[buttons.length - 1].click();
-    }
+    // Use stable selector with aria-label
+    const deleteButton = todoItem.getByRole('button', { name: /delete/i });
+    await deleteButton.click();
     
     // State-based wait: Wait for the todo to disappear
     await this.page.getByText(title).waitFor({ state: 'hidden' });
@@ -118,6 +114,38 @@ Navigate to the TODO application and wait for initial data load
    */
   async isAddButtonEnabled() {
     return this.addButton.isEnabled();
+  }
+
+  /**
+   * Get the stats chips displaying incomplete and completed counts
+   * @returns {Promise<{incomplete: number, completed: number}>} The todo stats
+   */
+  async getStats() {
+    const incompleteText = await this.page.getByText(/items left/i).textContent();
+    const completedText = await this.page.getByText(/completed/i).textContent();
+    
+    const incomplete = parseInt(incompleteText.match(/(\d+)/)?.[1] || '0');
+    const completed = parseInt(completedText.match(/(\d+)/)?.[1] || '0');
+    
+    return { incomplete, completed };
+  }
+
+  /**
+   * Check if empty state message is displayed
+   * @returns {Promise<boolean>} True if empty state message is visible
+   */
+  async hasEmptyStateMessage() {
+    const emptyMessage = this.page.getByText(/no todos yet/i);
+    return emptyMessage.isVisible();
+  }
+
+  /**
+   * Check if error message is displayed
+   * @returns {Promise<boolean>} True if error message is visible
+   */
+  async hasErrorMessage() {
+    const errorMessage = this.page.getByText(/error loading todos/i);
+    return errorMessage.isVisible();
   }
 }
 
